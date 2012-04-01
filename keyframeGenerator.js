@@ -20,29 +20,6 @@
      * var css = createKeyframeCSS(set);
      */
 
-    var createKeyframeSet = function (from, to, frames, timingFn)
-    {
-        if (! frames) frames = 100;
-        if (! timingFn) timingFn = function (pos) { return pos; };
-
-        var parsed = {from: {}, to: {}};
-        for (var property in to){
-            parsed.from[property] = parseCSSValue(from[property])
-            parsed.to[property] = parseCSSValue(to[property])
-        }
-
-        var progress = 0, increment = 1/frames, keyframes = {};
-        for(; progress <= 1; progress += increment) {
-            keyframes[progress] = createKeyframe(parsed.from, parsed.to, progress, timingFn);
-        }
-
-        if (! ('1' in keyframes)){
-            keyframes['1'] = createKeyframe(parsed.from, parsed.to, 1, timingFn)
-        }
-
-        return keyframes;
-    };
-
     var parseKeyframe = function (frame)
     {
         var parsed = {};
@@ -105,14 +82,39 @@
         return (from + (to - from) * percent).toFixed(6);
     };
 
-    var createKeyframeCSS = function (frames, name)
+
+    function KeyframeSet(from, to, frames, timingFn)
+    {
+        if (! frames) frames = 100;
+        if (! timingFn) timingFn = function (pos) { return pos; };
+
+        this.keyframes = {};
+
+        var parsed = {from: {}, to: {}};
+        for (var property in to){
+            parsed.from[property] = parseCSSValue(from[property])
+            parsed.to[property] = parseCSSValue(to[property])
+        }
+
+        var progress = 0, increment = 1/frames;
+        for(; progress <= 1; progress += increment) {
+            this.keyframes[progress] = createKeyframe(parsed.from, parsed.to, progress, timingFn);
+        }
+
+        if (! ('1' in this.keyframes)){
+            this.keyframes['1'] = createKeyframe(parsed.from, parsed.to, 1, timingFn)
+        }
+
+    };
+
+    KeyframeSet.prototype.toCSS = KeyframeSet.prototype.toString = function (name)
     {
         if (!name) name = 'animation_'+(+new Date)
         var rules = [];
 
-        for (var selector in frames)
+        for (var selector in this.keyframes)
         {
-            var frame = frames[selector];
+            var frame = this.keyframes[selector];
             var rule = selector*100+'% {';
 
             for (var prop in frame){
@@ -125,7 +127,7 @@
         return '@-webkit-keyframes '+name+' { '+rules.join(' ')+ " }";
     };
 
-    var Timing = {
+    var Timing = KeyframeSet.Timing = {
         Linear: {},
         Quadratic: {},
         Cubic: {},
@@ -400,11 +402,5 @@
         return env;
     }
 
-    expose('keyframeGenerator',
-           {
-               createKeyframeSet: createKeyframeSet,
-               createKeyframeCSS: createKeyframeCSS,
-               Timing: Timing
-           }
-          )
+    expose('KeyframeSet', KeyframeSet);
 })(this);
